@@ -22,13 +22,13 @@ def nike () :
 
     galaxy_data = gc.get_quantities(['ra', 'dec', "redshift", "stellar_mass", 
                                  "mag_u_lsst", "mag_g_lsst", "mag_r_lsst", "mag_i_lsst", "mag_z_lsst",
-                                 'halo_id', 'halo_mass'], filters=['mag_r < 23', 'Mag_true_r_lsst_z0 < -19.0'])
+                                 'halo_id', 'halo_mass', 'is_central'], filters=['mag_r < 23', 'Mag_true_r_lsst_z0 < -19.0'])
 
     cluster_data = gc.get_quantities(['ra','dec', "redshift", 'stellar_mass', 'halo_mass', 'halo_id'], 
                                  filters=['is_central', 'halo_mass > 1e14', 'redshift >= 0.3', 'redshift < 0.6'])
     cluster_data = pd.DataFrame(cluster_data)
     cluster_data["central_sm"] = cluster_data["stellar_mass"]
-    cluster_data.drop(columns="stellar_mass")
+    cluster_data = cluster_data.drop(columns="stellar_mass")
 
 
     print("galaxies", len(galaxy_data), type(galaxy_data), galaxy_data["ra"].size)
@@ -70,7 +70,7 @@ def cutout_around_cluster (galaxy_data, radius_arcmin, ra,dec, halo_id, halo_mas
     new_df = pd.DataFrame(
             {"ra":galaxy_data["ra"][ix],"dec":galaxy_data["dec"][ix],
              "redshift":galaxy_data["redshift"][ix],
-             "stellar_mass":galaxy_data["stellar_mass"][ix],
+             "stellar_mass":np.log10(galaxy_data["stellar_mass"][ix]),
              "mag_i":galaxy_data["mag_i_lsst"][ix],
              "mag_u-g":galaxy_data["mag_u_lsst"][ix]-galaxy_data["mag_g_lsst"][ix],
              "mag_g-r":galaxy_data["mag_g_lsst"][ix]-galaxy_data["mag_r_lsst"][ix],
@@ -78,9 +78,12 @@ def cutout_around_cluster (galaxy_data, radius_arcmin, ra,dec, halo_id, halo_mas
              "mag_i-z":galaxy_data["mag_i_lsst"][ix]-galaxy_data["mag_z_lsst"][ix],
              "halo_id":galaxy_data["halo_id"][ix],
              "cluster_id":(np.ones(galaxy_data["halo_id"][ix].size)*halo_id).astype(int),
-             "cluster_mass":(np.ones(galaxy_data["halo_id"][ix].size)*halo_mass),
-             "cluster_z":(np.ones(galaxy_data["halo_id"][ix].size)*halo_z)
+             "cluster_mass":np.log10((np.ones(galaxy_data["halo_id"][ix].size)*halo_mass)),
+             "cluster_z":(np.ones(galaxy_data["halo_id"][ix].size)*halo_z),
+             "is_central":galaxy_data["is_central"][ix],
             })
+    cl_radius_arcmin = np.sqrt((new_df["dec"]-dec)**2 + ((new_df["ra"]-ra)*np.cos(dec*2*np.pi/360.))**2)*60.
+    new_df["cluster_radius_arcmin"] = cl_radius_arcmin
     return new_df
 
 
